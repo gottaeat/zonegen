@@ -1,0 +1,212 @@
+#!/bin/sh
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program. If not, see <https://www.gnu.org/licenses/>.
+
+[ ! -f "/etc/zonegen.conf" ] && echo '_DOMAIN="crib"' > "/etc/zonegen.conf"
+
+. /etc/zonegen.conf
+
+# prechecks
+exitzoneconf(){
+    echo "${1}"
+    exit 1
+}
+
+_SYS_LAN_DEV="$(uci get network.lan.device)" \
+    || exitzonceconf "E: lan interface has no device."
+
+_SYS_LAN_V4="$(uci get network.lan.ipaddr)" \
+    || exitzoneconf "E: lan interface has no ipv4."
+
+_SYS_LAN_CIDR="$(ip addr show dev "${_SYS_LAN_DEV}" \
+                    | grep "${_SYS_LAN_V4}" \
+                    | awk '{print $2}' \
+                    | sed "s|${_SYS_LAN_V4}/||g")" \
+    || exitzoneconf "E: couldnt get cidr for lan."
+
+_SYS_HNAME="$(uci get system.@system[0].hostname | awk '{print tolower($1)}')" \
+    || exitzoneconf "E: system has no hostname."
+
+_DHCP_LEASE_FILE="$(uci get dhcp.odhcpd.leasefile)" \
+    || exitzoneconf "E: odhcpd leasefile not found"
+
+if [ ! "$(uci get dhcp.odhcpd.maindhcp)" -eq 1 ]; then
+    exitzoneconf "E: odhcpd is not the main dhcp server."
+fi
+
+_SYS_TMP_DIR="/tmp/bind"
+
+if [ -d "${_SYS_TMP_DIR}" ]; then
+    rm -rf "${_SYS_TMP_DIR}"
+    mkdir "${_SYS_TMP_DIR}"
+fi
+
+# zone file paths
+IFS='.' read -r _IPa _IPb _IPc _IPd << EOF
+${_SYS_LAN_V4}
+EOF
+
+case "${_SYS_LAN_CIDR}" in
+    24)
+        _SYS_PTR_BEGIN="${_IPa}.${_IPb}.${_IPc}"
+        _SYS_PTR_REV="${_IPc}.${_IPb}.${_IPa}"
+        _SYS_LOL="3"
+    ;;
+    16)
+        _SYS_PTR_BEGIN="${_IPa}.${_IPb}"
+        _SYS_PTR_REV="${_IPb}.${_IPa}"
+        _SYS_LOL="2"
+    ;;
+    8)
+        _SYS_PTR_BEGIN="${_IPa}"
+        _SYS_PTR_REV="${_IPa}"
+        _SYS_LOL="1"
+    ;;
+    32)
+        exitzoneconf "E: what";;
+    *)
+        exitzoneconf "E: not smart enough to do classless.";;
+esac
+
+unset IFS
+
+_SYS_A_FILE="${_SYS_TMP_DIR}/zone.${_DOMAIN}"
+_SYS_PTR_FILE="${_SYS_TMP_DIR}/zone.${_SYS_PTR_REV}"
+
+# util
+reverse_ip(){
+    string="$(echo ${1} | sed "s|${_SYS_PTR_BEGIN}\.||")"
+    IFS='.' read -r a b c<< EOF
+${string}
+EOF
+    case "${_SYS_LOL}" in
+        3)
+            echo "${a}" ;;
+        2)
+            echo "${b}.${a}" ;;
+        1)
+            echo "${c}.${b}.${a}" ;;
+    esac
+
+    unset string IFS
+}
+
+init_a_zone(){
+    cat << EOF > "${_SYS_A_FILE}"
+\$TTL 604800
+@ IN SOA ${_DOMAIN}. root.${_DOMAIN}. (1 604800 86400 2419200 604800)
+@ IN NS ${_SYS_HNAME}.${_DOMAIN}.
+@ IN A ${_SYS_LAN_V4}
+${_SYS_HNAME} IN A ${_SYS_LAN_V4}
+EOF
+}
+
+init_ptr_zone(){
+    cat << EOF > "${_SYS_PTR_FILE}"
+\$TTL 604800
+@ IN SOA ${_DOMAIN}. root.${_DOMAIN}. (1 604800 86400 2419200 604800)
+@ IN NS ${_SYS_HNAME}.${_DOMAIN}.
+`reverse_ip ${_SYS_LAN_V4}` IN PTR ${_SYS_HNAME}.${_DOMAIN}.
+EOF
+}
+
+gen_named_conf(){
+    cat << EOF > /tmp/bind/named.conf.local
+zone "${_DOMAIN}" {
+    type master;
+    file "${_SYS_A_FILE}";
+};                       
+
+zone "${_SYS_PTR_REV}.in-addr.arpa" {
+    type master;
+    file "${_SYS_PTR_FILE}";
+}; 
+EOF
+}
+
+# func
+gen_a_rec(){
+    echo "${1}" IN A "${2}"
+}
+
+gen_ptr_rec(){
+    echo "$(reverse_ip ${2}) IN PTR ${1}.${_DOMAIN}."
+}
+
+gen_static_lease_rec(){
+    _STATIC_LEASE_COUNT="$(echo $(uci show dhcp \
+                            | grep 'dhcp.@host\[.\]=host' | wc -l))"
+
+    echo "I: found ${_STATIC_LEASE_COUNT} static leases."
+    if [ ! "${_STATIC_LEASE_COUNT}" -eq 0 ]; then
+        i=0
+
+        until [ "${i}" -eq "$((${_STATIC_LEASE_COUNT}))" ]; do
+            _hname="$(uci get dhcp.@host[${i}].name)"
+            _hip="$(uci get dhcp.@host[${i}].ip)"
+
+            echo " - ${i} ${_hname} ${_hip}"
+
+            gen_a_rec "${_hname}" "${_hip}" >> "${_SYS_A_FILE}"
+            gen_ptr_rec "${_hname}" "${_hip}" >> "${_SYS_PTR_FILE}"
+
+            i="$((${i}+1))"
+        done
+    fi
+    unset i _hname _hip
+}
+
+gen_dhcp_lease_rec(){
+    echo "I: processing dynamic leases."
+    if [ `grep -v ^\# "${_DHCP_LEASE_FILE}" 2>/dev/null | wc -l` -eq 0 ];
+        then
+            echo " - no lease found."
+        else
+            while read host; do
+                if [ "$(echo ${host} | awk '{print $1}')" != "#" ]; then
+                    _d_hname="$(echo ${host} | awk '{print $2}')"
+                    _d_hip="$(echo ${host} | awk '{print $1}')"
+
+                    echo " - ${_d_hname} ${_d_hip}"
+
+                    sed -i -e "/IN PTR ${_d_hname}\.${_DOMAIN}\./d" "${_SYS_PTR_FILE}"
+                    sed -i -e "/${_d_hname} IN A/d" "${_SYS_A_FILE}"
+
+                    sed -i -e "/${_d_hip})/d" "${_SYS_A_FILE}"
+                    sed -i -e "/^$(reverse_ip ${_d_hip}) /d" "${_SYS_PTR_FILE}"
+
+                    gen_a_rec "${_d_hname}" "${_d_hip}" >> "${_SYS_A_FILE}"
+                    gen_ptr_rec "${_d_hname}" "${_d_hip}" >> "${_SYS_PTR_FILE}"
+                fi
+            done < "${_DHCP_LEASE_FILE}"
+            unset _d_hname _d_hip
+    fi
+}
+
+# action
+echo "I: generating named.conf.local"
+gen_named_conf
+echo " - $?"
+
+echo "I: initing A zone"
+init_a_zone 
+echo " - $?"
+
+echo "I: initing PTR zone"
+init_ptr_zone
+echo " - $?"
+
+gen_static_lease_rec
+gen_dhcp_lease_rec
+
+echo "I: reloading"
+rndc reload
