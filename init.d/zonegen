@@ -1,0 +1,7 @@
+#!/bin/sh /etc/rc.common
+
+START=23
+
+start(){
+    /bin/zonegen
+}
