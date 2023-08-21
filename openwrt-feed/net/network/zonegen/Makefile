@@ -1,11 +1,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=zonegen
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_URL:=https://github.com/gottaeat/zonegen.git
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_VERSION:=9a3520d450587b329645a47f4d16525ffb692f46
+PKG_SOURCE_VERSION:=c9f9a69d88fed981c4e3296f91afbfe1826d9910
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/meson.mk
