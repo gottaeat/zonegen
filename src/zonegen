@@ -178,8 +178,8 @@ gen_dhcp_lease_rec(){
 
                     echo " - ${_d_hname} ${_d_hip}"
 
-                    sed -i -e "/IN PTR ${_d_hname}\.${_DOMAIN}\./d" "${_SYS_PTR_FILE}"
-                    sed -i -e "/${_d_hname} IN A/d" "${_SYS_A_FILE}"
+                    # sed -i -e "/IN PTR ${_d_hname}\.${_DOMAIN}\./d" "${_SYS_PTR_FILE}"
+                    # sed -i -e "/${_d_hname} IN A/d" "${_SYS_A_FILE}"
 
                     sed -i -e "/${_d_hip})/d" "${_SYS_A_FILE}"
                     sed -i -e "/^$(reverse_ip ${_d_hip}) /d" "${_SYS_PTR_FILE}"
