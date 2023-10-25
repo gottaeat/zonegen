@@ -37,10 +37,10 @@ opkg install \
 # 5. download and install zonegen OR build yours as stated below
 cd /tmp
 
-curl -L -O https://github.com/gottaeat/zonegen/releases/download/1/\
-22.03.5-zonegen_9a3520d4-1_mipsel_24kc.ipk
+curl -L -O https://github.com/gottaeat/zonegen/releases/download/2-23.05.0/\
+zonegen_c9f9a69d-2_mipsel_24kc.ipk
 
-opkg install ./22.03.5-zonegen_9a3520d4-1_mipsel_24kc.ipk
+opkg install ./zonegen_c9f9a69d-2_mipsel_24kc.ipk
 
 # 5a. if necessary, edit the domain name for the local zone in /etc/zonegen.conf
 
