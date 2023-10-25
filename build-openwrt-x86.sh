@@ -5,9 +5,10 @@ _FEED_PATH="${PWD}"/openwrt-feed
 mkdir build/
 cd    build/
 
-curl -L -O https://downloads.openwrt.org/releases/22.03.5/targets/x86/generic/openwrt-sdk-22.03.5-x86-generic_gcc-11.2.0_musl.Linux-x86_64.tar.xz
-tar xf openwrt-sdk-22.03.5-x86-generic_gcc-11.2.0_musl.Linux-x86_64.tar.xz
-cd     openwrt-sdk-22.03.5-x86-generic_gcc-11.2.0_musl.Linux-x86_64/
+curl -L -O https://downloads.openwrt.org/releases/23.05.0/targets/x86/generic/openwrt-sdk-23.05.0-x86-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+
+tar xf openwrt-sdk-23.05.0-x86-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+cd     openwrt-sdk-23.05.0-x86-generic_gcc-12.3.0_musl.Linux-x86_64/
 
 echo "src-link local ${_FEED_PATH}" >> feeds.conf.default
 ./scripts/feeds update packages base local
