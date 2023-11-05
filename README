@@ -47,16 +47,34 @@ opkg install ./zonegen_c9f9a69d-2_mipsel_24kc.ipk
 # 6. set up named
 cd /etc/bind
 
-for i in `ls -w1 | grep -v rndc`; do rm -rfv "${i}"; done
+rm -rfv /etc/bind/*
 
 baseurl="https://raw.githubusercontent.com/gottaeat/zonegen/main/files/"
 curl -L -O "${baseurl}"/named.conf
+
+rndc_conf="$(rndc-confgen)"
+
+echo "${rndc_conf}" | grep -v ^\# > /etc/rndc.conf
+
+printf "\n%s\n%s\n" \
+ "// rndc" \
+ "$(echo "${rndc_conf}" | grep \# | grep -v ^\#\ [A-Z] \
+     | sed 's/^# //g;s/allow\ {\ 127\.0\.0\.1/allow { \"loopback\"/g;')" \
+ >> /etc/named.conf
+
+unset rndc_conf
 
 mkdir zone/
 cd    zone/
 
 filelist="0 0.0.127 255 empty localhost root-nov6"
 for i in ${filelist}; do curl -L -O "${baseurl}"/zone/"${i}"; done
+
+mkdir chaos/
+cd    chaos/
+
+chaosfiles="bind server"
+for i in ${chaosfiles}; do curl -L -O "${baseurl}"/zone/chaos/"${i}"; done
 
 # 7. restart bind and set zones
 /etc/init.d/named restart
