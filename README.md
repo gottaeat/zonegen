@@ -60,16 +60,6 @@ rm -rfv /etc/bind/*
 baseurl="https://raw.githubusercontent.com/gottaeat/zonegen/main/files/"
 curl -L -O "${baseurl}"/named.conf
 
-rndc_conf="$(rndc-confgen)"
-
-echo "${rndc_conf}" | grep -v ^\# > /etc/bind/rndc.conf
-
-printf "\n%s\n%s\n" \
- "// rndc" \
- "$(echo "${rndc_conf}" | grep \# | grep -v ^\#\ [A-Z] \
-     | sed 's/^# //g;s/allow\ {\ 127\.0\.0\.1/allow { \"loopback\"/g;')" \
- >> named.conf
-
 mkdir zone/
 cd    zone/
 
