@@ -49,7 +49,7 @@ zonegen_c9f9a69d-2_mipsel_24kc.ipk
 opkg install ./zonegen_c9f9a69d-2_mipsel_24kc.ipk
 ```
 
-5a. if necessary, edit the domain name for the local zone in `/etc/zonegen.conf`
+(if necessary, edit the domain name for the local zone in `/etc/zonegen.conf`)
 
 6. set up `named`:
 ```
