@@ -52,6 +52,7 @@ opkg install ./zonegen_c9f9a69d-2_mipsel_24kc.ipk
 (if necessary, edit the domain name for the local zone in `/etc/zonegen.conf`)
 
 6. set up `named`:
+(the acl lists in `named.conf` might require updating)
 ```
 cd /etc/bind
 
@@ -90,7 +91,7 @@ to locally build by running the openwrt SDK on your machine, run the following.
 ### 2. docker
 if the compilation is noticably slower than the local build with the shell
 script up above, that mostly likely is due to the `fakeroot` process within the
-container choking up, you might want to add --ulimit "nofile=1024:524288" to
+container choking up, you might want to add `--ulimit "nofile=1024:524288"` to
 your `docker` run args, or change the line `LimitNOFILE=infinity` to
 `LimitNOFILE=1024:524288` for `docker` and `containerd` systemd service files.
 to learn more, refer to: https://github.com/moby/moby/issues/38814
