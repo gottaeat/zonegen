@@ -62,7 +62,7 @@ curl -L -O "${baseurl}"/named.conf
 
 rndc_conf="$(rndc-confgen)"
 
-echo "${rndc_conf}" | grep -v ^\# > /etc/named-rndc.conf
+echo "${rndc_conf}" | grep -v ^\# > /etc/bind/rndc.conf
 
 printf "\n%s\n%s\n" \
  "// rndc" \
