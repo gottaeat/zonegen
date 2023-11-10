@@ -105,7 +105,6 @@ init_a_zone(){
 \$TTL 5M
 @ IN SOA ${_DOMAIN}. root.${_DOMAIN}. ( 1 1W 1D 4W 1W )
 @ IN NS ${_SYS_HNAME}.${_DOMAIN}.
-@ IN A ${_SYS_LAN_V4}
 ${_SYS_HNAME} IN A ${_SYS_LAN_V4}
 EOF
 }
