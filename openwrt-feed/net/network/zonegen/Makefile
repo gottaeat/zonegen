@@ -5,7 +5,7 @@ PKG_RELEASE:=2
 
 PKG_SOURCE_URL:=https://github.com/gottaeat/zonegen.git
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_VERSION:=7aaca5bda53bc645719ba5434e1e50b7e2dfbdc1
+PKG_SOURCE_VERSION:=7d56d24ec5ba5a12a9754ec9ab2c54359a13fb40
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/meson.mk
